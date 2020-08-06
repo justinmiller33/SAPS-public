@@ -33,12 +33,6 @@ class simpy:
         # Authenticate
         robin_stocks.authentication.login(username='JustinM6711', password=password)
 
-    # Stock update via sms
-    def sendSmsUpdate(text):
-        account_sid = 'ACa5e090aa63a4eacc1cb426134bc6f06f'
-        auth_token = '22ce3e77765ac854ec64f46a97561530'
-        client = Client(account_sid, auth_token)
-        message = client.messages.create(from_ = '+12055092802',to = '+17742668896', body = text)
 
     # Function to buy stock
     def buy(ticker):

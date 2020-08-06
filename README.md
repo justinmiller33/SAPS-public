@@ -10,4 +10,4 @@
 - May be dependent on volatile market behavior(COVID-19)
 
 #### **Proof of Concept: Simulating profits from manual feature extraction.** 
-![Proof Of Concept](https://github.com/justinmiller33/SAPS-public/blob/master/pocWhole.png)
+![Proof Of Concept](https://github.com/justinmiller33/SAPS-public/tree/master/Proof%20Of%20Concept)

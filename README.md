@@ -1,13 +1,19 @@
 # SAPS-public
 ## **Sentiment Analysis of Penny Stocks**
-### **Process**
-- Data scraped from 2000+ individual users through a hub of market discussion
-- Reccomendations specific to a single stock extracted and verified
-- Data matched with time series financial data for short term trades
-- Automating confidence prediction using ensembling techniques
+### **Processes**
+**extraction.py**
+- Class to scrape data from multiple subreddits.
+- Extracts post data and metadata from Reddit's PushShift API
+- Uses Yahoo Finance API to extract relevant financial data
+- Extracts matching dicts of intraday and interday profits
+
+**simulation.py**
+- Real time validation of trades by simulating policies
+- Utilizes RobinHood API to get theoretical profits
+
 ### **Limitations**
 - Trading Fees and Volume Limitations
-- May be dependent on volatile market behavior(COVID-19)
+- Dependency on volatile market behavior (COVID-19)
 
 #### **Proof of Concept: Simulating profits from manual feature extraction.** 
 ![Proof Of Concept](https://github.com/justinmiller33/SAPS-public/blob/master/Proof%20Of%20Concept/pocWhole.png)

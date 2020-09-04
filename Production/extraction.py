@@ -366,22 +366,21 @@ class Saps:
 """ ACTION """
 
 # Max number of posts to scrape
-num = 1000
+num = 20000
 
 # List of subreddits
-subList = ["investing"]
+subList = ["pennystocks,stocks,StockMarket,daytrading,robinhood,RobinHoodPennyStocks"]
 
 # Naming list for each output
-nameList = ["Investing"]
+nameList = ["Pennystocks,Stocks,StockMarket,Daytrading,Robinhood,RobinHoodPennyStocks"]
 
 # For each subreddit
 for i in range(len(subList)):
 
     df,fDataIntra, fDataInter = Saps.main(num, subList[i], nameList[i])
     
-        
-        
-
-        
+    print("------------------------------------")
+    print(str(len(fDataIntra)) + " + " + str(len(fDataInter)) + " posts scraped for r/" + subList[i]) 
+    print("------------------------------------")
 
     

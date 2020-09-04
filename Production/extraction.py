@@ -106,9 +106,13 @@ class Saps:
     # Validation is done later in the process
     def extractTickers(string):
 
-        # First step, getting all substrings with 3 or 4 letters ending in a space
-        tickers = np.array(re.findall(r'\w{4}\b',string))
-        tick3 = np.array(re.findall(r'\w{3}\b',string))
+        # First step, getting all substrings with 3 or 4 letters ending in a space and starting with space or $
+        tickers = np.array(re.findall(r'[$]\w{4}\b',text) + re.findall(r'[ ]\w{4}\b',string))
+        tick3 = np.array(re.findall(r'[$]\w{3}\b',text) + re.findall(r'[ ]\w{3}\b',string))
+
+        # For each length, dropping the $ or _ taken from the regex
+        tickers = list(map(lambda x:x[1:], tickers))
+        tick3 = list(map(lambda x:x[1:], tick3))
 
         # For each length, only taking the substrings that are fully capitilized
         tickers = tickers[list(map(lambda x:x.isupper(),tickers))]
@@ -118,7 +122,7 @@ class Saps:
         tickers = np.unique(tickers)
         tick3 = np.unique(tick3)
 
-        # Initializing array to delete
+        # Initializing an array to delete subset redundancies
         toDelete = np.array([])
 
         # Loop through arrays finding where tick3 is a substring of a member of tickers

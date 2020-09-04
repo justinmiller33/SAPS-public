@@ -10,17 +10,19 @@ import datetime
 import requests
 import pandas as pd
 import re
+import pickle
 
 # SAPS Class
 class Saps:
     
     """
     Class to facilitate the extraction, matching, and organizing
-    of stock data from various social media channels and accounts
+    of stock reccomendations from various social media channels
 
 
-    Functionality:
-    
+    Methods:
+
+    --Post-Related--
     crawlPage(subreddit, lastPage):
         crawls one page of reddits pushshift API call
     crawlSubreddit(subreddit, maxSubmissions):
@@ -31,8 +33,19 @@ class Saps:
     extractPost(num, channel, testName):
         extracts num recent posts from channel and saves 
         relevant information as df'testName'.npy
-        
 
+    --Financial-Related--
+    getIntraday(rowNum,df):
+        gets intraday trading data for the rowNum'th post in the dataframe
+    getInterday(rowNum,df):
+        gets intraday trading data for the rowNum'th post in the dataframe
+    extractFinData(df):
+        gets interday & intraday data for all posts in dataframe
+        
+    --Miscellaneous--
+    loadDf(pathToFile)
+        loads previously created subreddit dataframe .npy file
+    
     Input Options:
     Reddit - Subreddits
     Twitter - Users, Hashtags (TODO)
@@ -212,12 +225,19 @@ class Saps:
         df.datetime = datetimeList
 
         # Saving dataframe with user defined file name
-        np.save('df'+testName+'.npy',df)
+        np.save('/home/justinmiller/devel/SAPS-public/Data/df'+testName+'.npy',df)
         # Update
         print("loaded with " + str(len(df)) + " tickers... move to finData extraction.")
 
         return df
 
+    # Function to load a dataframe with info on a subreddit
+    def loadDf(pathToFile):
+        df = np.load(pathToFile, allow_pickle = True)
+        df = pd.DataFrame(df, columns = ['ticker','title','text','type','datetime'])
+
+        return df
+    
     # Function to get intraday financial data for one post
     def getIntraday(rowNum,df):
         
@@ -286,8 +306,14 @@ class Saps:
 
         return profits
 
+    # Function to save dictionary of financial data as a pickle file
+    def savePickle(fData,pathToFile):
+        file = open("/home/justinmiller/devel/SAPS-public/Data/fData" + pathToFile + ".pkl","wb")
+        pickle.dump(fData,file)
+        file.close()
+        
     # Extracting financial data for intraday and interday trades
-    def extractFinData(df):
+    def extractFinData(df, fileName):
         fDataIntra = {}
         
         # For each row in the dataframe
@@ -300,9 +326,12 @@ class Saps:
 
             # Updating progress
             if rowNum % 100 == 50:
-                print(rowNum/len(df))
+                print(str(rowNum/len(df)) + " of Intraday Loaded")
                 print(len(fDataIntra))
-                
+
+        Saps.savePickle(fDataIntra, "Intra" + fileName)
+        print("Intraday Saved")
+        
         fDataInter = {}
         
         # For each row in the dataframe
@@ -315,7 +344,44 @@ class Saps:
 
             # Updating progress
             if rowNum % 100 == 50:
-                print(rowNum/len(df))
+                print(str(rowNum/len(df)) + " of Interday Loaded")
                 print(len(fDataInter))
 
+        Saps.savePickle(fDataIntra, "Inter" + fileName)
+        print("Interday Saved")
+        
         return fDataIntra, fDataInter
+
+    # Main loop to extract post and financial data
+    def main(num, channel, name):
+
+        # Extract and save post data df
+        df = Saps.extractPosts(num, channel, name)
+
+        # Extract and save financial data pickles
+        fDataIntra, fDataInter = Saps.extractFinData(df, name)
+
+        return df, fDataIntra, fDataInter
+
+""" ACTION """
+
+# Max number of posts to scrape
+num = 1000
+
+# List of subreddits
+subList = ["investing"]
+
+# Naming list for each output
+nameList = ["Investing"]
+
+# For each subreddit
+for i in range(len(subList)):
+
+    df,fDataIntra, fDataInter = Saps.main(num, subList[i], nameList[i])
+    
+        
+        
+
+        
+
+    

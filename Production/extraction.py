@@ -107,13 +107,16 @@ class Saps:
     def extractTickers(string):
 
         # First step, getting all substrings with 3 or 4 letters ending in a space and starting with space or $
-        tickers = np.array(re.findall(r'[$]\w{4}\b',text) + re.findall(r'[ ]\w{4}\b',string))
-        tick3 = np.array(re.findall(r'[$]\w{3}\b',text) + re.findall(r'[ ]\w{3}\b',string))
+        tickers = np.array(re.findall(r'[$]\w{4}\b',string) + re.findall(r'[ ]\w{4}\b',string))
+        tick3 = np.array(re.findall(r'[$]\w{3}\b',string) + re.findall(r'[ ]\w{3}\b',string))
 
+        # print(tickers)
+        
         # For each length, dropping the $ or _ taken from the regex
-        tickers = list(map(lambda x:x[1:], tickers))
-        tick3 = list(map(lambda x:x[1:], tick3))
+        tickers = np.array(list(map(lambda x:x[1:], tickers)))
+        tick3 = np.array(list(map(lambda x:x[1:], tick3)))
 
+        # print(tickers)
         # For each length, only taking the substrings that are fully capitilized
         tickers = tickers[list(map(lambda x:x.isupper(),tickers))]
         tick3 = tick3[list(map(lambda x:x.isupper(),tick3))]
@@ -133,6 +136,10 @@ class Saps:
 
         # Delete redundancies from tick3
         tick3 = np.delete(tick3, toDelete.astype(int))
+
+        # Update Output
+        print("Completed Ticker Extraction")
+        print(str(len(tick3)+len(tickers)) + " Tickers")
 
         return tickers
 
@@ -351,7 +358,7 @@ class Saps:
                 print(str(rowNum/len(df)) + " of Interday Loaded")
                 print(len(fDataInter))
 
-        Saps.savePickle(fDataIntra, "Inter" + fileName)
+        Saps.savePickle(fDataInter, "Inter" + fileName)
         print("Interday Saved")
         
         return fDataIntra, fDataInter
@@ -370,13 +377,13 @@ class Saps:
 """ ACTION """
 
 # Max number of posts to scrape
-num = 20000
+num = 500
 
 # List of subreddits
-subList = ["pennystocks,stocks,StockMarket,daytrading,robinhood,RobinHoodPennyStocks"]
+subList = ["pennystocks","stocks","StockMarket","daytrading","robinhood","RobinHoodPennyStocks"]
 
 # Naming list for each output
-nameList = ["Pennystocks,Stocks,StockMarket,Daytrading,Robinhood,RobinHoodPennyStocks"]
+nameList = ["Pennystocks","Stocks","StockMarket","Daytrading","Robinhood","RobinHoodPennyStocks"]
 
 # For each subreddit
 for i in range(len(subList)):
@@ -386,5 +393,6 @@ for i in range(len(subList)):
     print("------------------------------------")
     print(str(len(fDataIntra)) + " + " + str(len(fDataInter)) + " posts scraped for r/" + subList[i]) 
     print("------------------------------------")
+    print(i)
 
     

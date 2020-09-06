@@ -1,10 +1,11 @@
-# SAPS-public
-## **Sentiment Analysis of Penny Stocks**
-### **Processes**
-**Data/**
+# **Sentiment Analysis of Penny Stocks**
+
+### **Data**
 - dfXXXX.npy: Dataframe of scraped posts with identifier, content, and metadata.
 - fDataInterXXXX.pkl: Dict of scraped interday financial data with identifiers.
-- fDataIntraXXX.pkl: Dict of scraped intraday financial data with identifiers.
+- fDataIntraXXXX.pkl: Dict of scraped intraday financial data with identifiers.
+
+### **Processes**
 
 **extraction.py**
 - Class to scrape data from multiple subreddits.

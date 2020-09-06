@@ -1,11 +1,11 @@
 # **Sentiment Analysis of Penny Stocks**
 
-### **Data**
+## **Data**
 - dfXXXX.npy: Dataframe of scraped posts with identifier, content, and metadata.
 - fDataInterXXXX.pkl: Dict of scraped interday financial data with identifiers.
 - fDataIntraXXXX.pkl: Dict of scraped intraday financial data with identifiers.
 
-### **Processes**
+## **Processes**
 
 **extraction.py**
 - Class to scrape data from multiple subreddits.
@@ -17,9 +17,9 @@
 - Real time validation of trades by simulating policies
 - Utilizes RobinHood API to get theoretical profits
 
-### **Limitations**
+## **Limitations**
 - Trading Fees and Volume Limitations
 - Dependency on volatile market behavior (COVID-19)
 
-#### **Proof of Concept: Simulating profits from manual feature extraction.** 
+### **Proof of Concept: Simulating profits from manual feature extraction.** 
 ![Proof Of Concept](https://github.com/justinmiller33/SAPS-public/blob/master/Proof%20Of%20Concept/pocWhole.png)

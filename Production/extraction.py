@@ -137,9 +137,12 @@ class Saps:
         # Delete redundancies from tick3
         tick3 = np.delete(tick3, toDelete.astype(int))
 
+        # Appeding tick3 to tickers list
+        tickers = np.append(tickers, tick3)
+        
         # Update Output
         print("Completed Ticker Extraction")
-        print(str(len(tick3)+len(tickers)) + " Tickers")
+        print(str(len(tickers)) + " Tickers")
 
         return tickers
 
@@ -374,16 +377,17 @@ class Saps:
 
         return df, fDataIntra, fDataInter
 
-""" ACTION """
+""" ACTION 
 
 # Max number of posts to scrape
-num = 500
+num = 20000
 
 # List of subreddits
-subList = ["pennystocks","stocks","StockMarket","daytrading","robinhood","RobinHoodPennyStocks"]
-
+#subList = ["pennystocks","stocks","StockMarket","daytrading","robinhood","RobinHoodPennyStocks"]
+subList = ['investing']
 # Naming list for each output
-nameList = ["Pennystocks","Stocks","StockMarket","Daytrading","Robinhood","RobinHoodPennyStocks"]
+#nameList = ["Pennystocks","Stocks","StockMarket","Daytrading","Robinhood","RobinHoodPennyStocks"]
+nameList = ['Investing']
 
 # For each subreddit
 for i in range(len(subList)):
@@ -396,3 +400,5 @@ for i in range(len(subList)):
     print(i)
 
     
+
+"""

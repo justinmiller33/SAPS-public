@@ -1,6 +1,11 @@
 # SAPS-public
 ## **Sentiment Analysis of Penny Stocks**
 ### **Processes**
+**Data/**
+- dfXXXX.npy: Dataframe of scraped posts with identifier, content, and metadata.
+- fDataInterXXXX.pkl: Dict of scraped interday financial data with identifiers.
+- fDataIntraXXX.pkl: Dict of scraped intraday financial data with identifiers.
+
 **extraction.py**
 - Class to scrape data from multiple subreddits.
 - Extracts post data and metadata from Reddit's PushShift API

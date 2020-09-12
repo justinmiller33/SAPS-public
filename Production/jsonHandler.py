@@ -54,7 +54,7 @@ def deserialize(fData):
         postData[:,1] = fData[key].values
 
         # Writing postData over old pandas series
-        fData[key] = postData
+        fData[key] = postData.tolist()
 
     return fData
 
@@ -84,7 +84,7 @@ def writeFDataMd(jsonDict, dfName, finType, fData):
 jsonDict = {}
 
 # Getting all files in data directory
-dataDir = '/home/justinmiller/devel/SAPS-public/Data/'
+dataDir = 'C:/devel/SAPS-public/Data/'
 files = np.array(os.listdir(dataDir))
 
 # Getting lists of pkl and numpy files
@@ -125,7 +125,7 @@ for npy in npyList:
     df[:,-1] = timeList
     
     # Write df to raw
-    jsonDict[dfName]['raw']['postData'] = df
+    jsonDict[dfName]['raw']['postData'] = df.tolist()
 
     # Write df metadata
     jsonDict = writeDfMd(jsonDict, dfName, df)

@@ -32,7 +32,7 @@ Includes:
 2. Defining 'profit' and cleaning data for ML algorithms
 3. Gathering supplemental data for feature engineering 
 4. Basic ML Models and Policies
-5. Ensembling
+5. Ensembling and Running Retrospective Simulations
 
 Notes:
 - Time descriptions |t| are estimates and may vary based on the data
@@ -117,6 +117,7 @@ class pipeline:
         self.finType = 'inter'
         self.profitDict = {}
         self.missedDict = {}
+        self.info = {}
         
     # Default function to open master json file
     # Also processes certain data into pandas dataframes and series
@@ -174,6 +175,9 @@ class pipeline:
 
         # Assert that self.finType is inter
         self.assertInter()
+
+        # Updating self.info with number of days chosen
+        self.info['daysToHold'] = days
 
         # For each subreddit
         for sub in self.subList:
@@ -251,7 +255,79 @@ class pipeline:
                 dfTemp['title'][rowNum] = dfTemp['title'][rowNum].replace(dfTemp.ticker[rowNum],"")
             
 
+    def simulateProfits(self):
 
+        # Which sub to run
+        for sub in self.subList:
+
+            # Saving df
+            df = self.data[sub]['raw']['postData']
+
+            # Starting money and keys
+            bank = 1000
+            portfolio = 1000
+            origInvest = 0
+            investList = list()
+            holdingKeys = list()
+
+            # Assigning Start Time
+            # time1 = np.min(df.unix)-10
+            # Start time at start of volatility 3/11/2020
+            time1 = df.unix[df.unix > 1583884800][-1] - 1
+            time2 = time1 + 3600
+            
+            endTime = 1600500000
+            print("started " + sub)
+            while time2 < endTime:
+
+                # Getting range of keys between those times (reversed to start with first buy
+                keysInRange = list(df.unix[time1 < df.unix][time2 > df.unix].index)[::-1]
+
+                # Adding those to holdingKeys
+                holdingKeys = holdingKeys + keysInRange
+                
+                # Subtracting from bank ($1 EACH)
+                bank = bank - len(keysInRange)
+                investList = investList + len(holdingKeys) * [portfolio/1000]
+
+                #origInvest = origInvest + len(keysInRange)
+                
+                
+                # Starting loop to check for keys who's sell time has come
+                timeToHold = (self.info['daysToHold'] + 2*self.info['daysToHold']/5) * 86400
+                checkedHold = False
+                
+                while not checkedHold:
+
+                    if not len(holdingKeys):
+                
+                        print(bank)
+                        time2 = endTime
+                        break
+                        
+                    keyToCheck = holdingKeys[0]
+
+                    unixOfKey = df.unix[keyToCheck]
+                    
+                    if time2 > unixOfKey + timeToHold:
+
+                        bank = bank + investList[0] * df.profit[keyToCheck]
+                        portfolio = portfolio - investList[0] + investList[0] * df.profit[keyToCheck]
+                        print(portfolio)
+                        #origInvest = origInvest-1
+                        
+                        del holdingKeys[0]
+                        del investList[0]
+                        
+                        continue
+                    
+                    else:
+                        checkedHold = True
+
+
+                time1 = time2
+                time2 = time2 + 3600
+                    
 # Input local data path
 pathToJson = "/home/justinmiller/devel/SAPS-public/Data/saps.json"
 
@@ -262,14 +338,15 @@ saps = pipeline(pathToJson)
 saps.initProfitDicts()
 
 # Get profits for a certain length hold
-saps.holdForTime(10)
+saps.holdForTime(25)
 
 # Cut missed rows from dataframe and append profits
 saps.cutMissedProfits()
 saps.appendProfitsToDf()
 
 # Remove tickers from text
-saps.removeTickersFromText()
+# saps.removeTickersFromText()
+bank = saps.simulateProfits()
 
 
 

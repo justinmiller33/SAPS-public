@@ -99,7 +99,15 @@ REQS: holdForTime
 Trimming ticker name from title and text to avoid confounding for naive bayes
 REQS: cutMissedProfits
 
+2.3 clearBadProfits
+() ; | insignificant |
+Converting infs and nan data to 0% profit. Recording amount ignored
+REQS: cutMissedProfits
 
+5.0 simulateProfits
+(sub, verbose) : | ~10 Seconds, ~ 20 seconds verbose |
+Simulating a retrospective run over the last 6 months. Outputting ROI and trade logs.
+REQS: clearBadProfits
 """
 
 class pipeline:
@@ -232,6 +240,24 @@ class pipeline:
             # Create a new column with profit data
             saps.data[sub]['raw']['postData']['profit'] = list(saps.profitDict[sub].values())
 
+    def clearBadProfits(self):
+        infs = {}
+        nans = {}
+
+        for sub in saps.subList:
+            
+            infBool = saps.data[sub]['raw']['postData']['profit'] > 10000
+            toDrop = list(infBool)
+            saps.data[sub]['raw']['postData']['profit'][toDrop] = 1
+            infs[sub] = len(toDrop)
+            
+            nanBool = np.isnan(saps.data[sub]['raw']['postData']['profit'])
+            toDrop = list(nanBool)
+            saps.data[sub]['raw']['postData']['profit'][toDrop] = 1
+            nans[sub] = len(toDrop)
+
+        return infs,nans
+        
     """
     3.0-1
     Supplementing postData and Removing Confounding Vars for ML algos
@@ -255,79 +281,121 @@ class pipeline:
                 dfTemp['title'][rowNum] = dfTemp['title'][rowNum].replace(dfTemp.ticker[rowNum],"")
             
 
-    def simulateProfits(self):
+    """
+    5.0
+    Simulating Profits (retrospective)
+    """
+    def simulateProfits(self,sub,verbose):
 
-        # Which sub to run
-        for sub in self.subList:
+        # Saving df
+        df = self.data[sub]['raw']['postData']
 
-            # Saving df
-            df = self.data[sub]['raw']['postData']
+        # Starting money and keys
+        bank = 10000
+        portfolio = 10000
+        tradeLog = {}
+        holdingKeys = list()
 
-            # Starting money and keys
-            bank = 1000
-            portfolio = 1000
-            origInvest = 0
-            investList = list()
-            holdingKeys = list()
+        # Assigning Start Time
+        # time1 = np.min(df.unix)-10
+        # Start time at start of volatility 3/11/2020
+        time1 = df.unix[df.unix > 1583884800][-1] - 1
+        time2 = time1 + 3600
+        
+        endTime = 1600500000
+        print("started r/" + sub)
+        while time2 < endTime:
 
-            # Assigning Start Time
-            # time1 = np.min(df.unix)-10
-            # Start time at start of volatility 3/11/2020
-            time1 = df.unix[df.unix > 1583884800][-1] - 1
-            time2 = time1 + 3600
+            # Getting range of keys between those times (reversed to start with first buy
+            keysInRange = list(df.unix[time1 < df.unix][time2 > df.unix].index)[::-1]
+
+            # Adding those to holdingKeys
+            holdingKeys = holdingKeys + keysInRange
             
-            endTime = 1600500000
-            print("started " + sub)
-            while time2 < endTime:
+            # Subtracting from bank ($1 EACH)
+            investmentAmount = portfolio/10000
+            bank = bank - investmentAmount * len(keysInRange)
+             
+            for key in keysInRange:
+                tradeLog[key] = {}
+                tradeLog[key]['timeOfPurchase'] = time2
+                tradeLog[key]['boughtFor'] = investmentAmount
+                
+            
+            # Starting loop to check for keys who's sell time has come
+            timeToHold = (self.info['daysToHold'] + 2*self.info['daysToHold']/5) * 86400
 
-                # Getting range of keys between those times (reversed to start with first buy
-                keysInRange = list(df.unix[time1 < df.unix][time2 > df.unix].index)[::-1]
+            # Flag to indicate if all holds have been checked for this time
+            checkedHold = False
 
-                # Adding those to holdingKeys
-                holdingKeys = holdingKeys + keysInRange
-                
-                # Subtracting from bank ($1 EACH)
-                bank = bank - len(keysInRange)
-                investList = investList + len(holdingKeys) * [portfolio/1000]
+            # While it hasn't checked
+            while not checkedHold:
 
-                #origInvest = origInvest + len(keysInRange)
-                
-                
-                # Starting loop to check for keys who's sell time has come
-                timeToHold = (self.info['daysToHold'] + 2*self.info['daysToHold']/5) * 86400
-                checkedHold = False
-                
-                while not checkedHold:
+                # If we are are no longer holding stocks, end the run
+                if not len(holdingKeys):
 
-                    if not len(holdingKeys):
-                
+                    # Record how much we spend and out return on investments
+                    totalSpent = 0
+                    totalMade = 0
+                    for trade in tradeLog:
+                        totalSpent = totalSpent + tradeLog[trade]['boughtFor']
+                        totalMade = totalMade + tradeLog[trade]['soldFor']
+
+                    # Display to user
+                    print("Total Amount Invested: " + str(totalSpent))
+                    print("Total Return: " + str(totalMade))
+                    print("Percent Return: " + str(100*(totalMade/totalSpent - 1)))
+
+                    # Set time to end to exit loop
+                    time2 = endTime
+
+                    # Return trade log for user to examine
+                    return tradeLog
+
+                    
+                # If we are still holding stocks
+
+                # Check the oldest key purchased
+                keyToCheck = holdingKeys[0]
+
+                # Get timestamp
+                unixOfKey = df.unix[keyToCheck]
+
+                # If the current time is greater than the time to hold
+                if time2 > unixOfKey + timeToHold:
+
+                    # Update the trade log with sold price and profit
+                    tradeLog[keyToCheck]['soldFor'] = tradeLog[keyToCheck]['boughtFor'] * df.profit[keyToCheck] 
+                    tradeLog[keyToCheck]['profit'] = df.profit[keyToCheck]
+
+                    # Update our bank and total portfolio amount
+                    bank = bank + tradeLog[keyToCheck]['soldFor']
+                    portfolio = portfolio - tradeLog[keyToCheck]['boughtFor'] + tradeLog[keyToCheck]['soldFor']
+
+                    # Update user of running bank amount
+                    if verbose:
                         print(bank)
-                        time2 = endTime
-                        break
-                        
-                    keyToCheck = holdingKeys[0]
 
-                    unixOfKey = df.unix[keyToCheck]
+                    # Get rid of that key (stop holding it)
+                    del holdingKeys[0]
+
                     
-                    if time2 > unixOfKey + timeToHold:
+                    continue
 
-                        bank = bank + investList[0] * df.profit[keyToCheck]
-                        portfolio = portfolio - investList[0] + investList[0] * df.profit[keyToCheck]
-                        print(portfolio)
-                        #origInvest = origInvest-1
-                        
-                        del holdingKeys[0]
-                        del investList[0]
-                        
-                        continue
-                    
-                    else:
-                        checkedHold = True
+                # If we haven't reached the time to sell anyone continue
+                else:
+                    checkedHold = True
 
+            # Update timestep
+            time1 = time2
+            time2 = time2 + 3600
 
-                time1 = time2
-                time2 = time2 + 3600
-                    
+"""
+------
+ACTION
+------
+"""
+
 # Input local data path
 pathToJson = "/home/justinmiller/devel/SAPS-public/Data/saps.json"
 
@@ -338,15 +406,26 @@ saps = pipeline(pathToJson)
 saps.initProfitDicts()
 
 # Get profits for a certain length hold
-saps.holdForTime(25)
+saps.holdForTime(30)
 
 # Cut missed rows from dataframe and append profits
 saps.cutMissedProfits()
 saps.appendProfitsToDf()
 
-# Remove tickers from text
-# saps.removeTickersFromText()
-bank = saps.simulateProfits()
+# Clearing bad profits (nans, infs, etc)
+infs, nans =  saps.clearBadProfits()
+
+# Get tradeLogs for simulated trades
+log = {}
+
+# For each log
+for sub in saps.subList:
+    
+    # Simulate profits
+    tradeLog = saps.simulateProfits(sub, verbose = False)
+    
+    # Save tradeLog in master dict
+    log[sub] = tradeLog
 
 
 

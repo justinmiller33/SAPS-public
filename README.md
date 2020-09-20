@@ -1,4 +1,4 @@
-# **Sentiment Analysis of Penny Stocks**
+# **Sentiment Analysis of Public StockHolders**
 
 ## **Data**
 - dfXXXX.npy: Dataframe of scraped posts with identifier, content, and metadata.

@@ -84,7 +84,7 @@ def writeFDataMd(jsonDict, dfName, finType, fData):
 jsonDict = {}
 
 # Getting all files in data directory
-dataDir = 'C:/devel/SAPS-public/Data/'
+dataDir = '/home/justinmiller/devel/SAPS-public/Data/'
 files = np.array(os.listdir(dataDir))
 
 # Getting lists of pkl and numpy files

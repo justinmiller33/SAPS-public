@@ -75,8 +75,12 @@ class Saps:
 
         # If scrape fails raise exception
         if not results.ok:
-            raise Exception("Server returned status code {}".format(results.status_code))
-
+            print("Server returned status code {}".format(results.status_code))
+            print("Sleeping 1 minute then retrying")
+            time.sleep(60)
+            lastPage = Saps.crawlPage(subreddit, lastPage)
+            return lastPage
+        
         # Return relevant json
         return results.json()["data"]
 
@@ -141,8 +145,8 @@ class Saps:
         tickers = np.append(tickers, tick3)
         
         # Update Output
-        print("Completed Ticker Extraction")
-        print(str(len(tickers)) + " Tickers")
+        #print("Completed Ticker Extraction")
+        #print(str(len(tickers)) + " Tickers")
 
         return tickers
 
@@ -377,16 +381,16 @@ class Saps:
 
         return df, fDataIntra, fDataInter
 
-""" ACTION 
+""" ACTION """
 
 # Max number of posts to scrape
-num = 20000
+num = 100000
 
 # List of subreddits
-#subList = ["pennystocks","stocks","StockMarket","daytrading","robinhood","RobinHoodPennyStocks"]
+#subList = ["stocks","StockMarket","daytrading","robinhood","RobinHoodPennyStocks"]
 subList = ['investing']
 # Naming list for each output
-#nameList = ["Pennystocks","Stocks","StockMarket","Daytrading","Robinhood","RobinHoodPennyStocks"]
+#nameList = ["Stocks","StockMarket","Daytrading","Robinhood","RobinHoodPennyStocks"]
 nameList = ['Investing']
 
 # For each subreddit
@@ -401,4 +405,3 @@ for i in range(len(subList)):
 
     
 
-"""

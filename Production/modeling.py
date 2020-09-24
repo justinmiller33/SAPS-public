@@ -7,6 +7,7 @@ import pandas as pd
 import datetime
 from datetime import datetime as dt
 from matplotlib import pyplot as plt
+from matplotlib import dates as md
 import random
 import math
 import warnings
@@ -126,6 +127,7 @@ class pipeline:
         self.profitDict = {}
         self.missedDict = {}
         self.info = {}
+        self.endToEnd = kwargs.get("endToEnd")
         
     # Default function to open master json file
     # Also processes certain data into pandas dataframes and series
@@ -205,6 +207,19 @@ class pipeline:
 
                     # Profit is the last index for that day, assuming 4:00 sell
                     profit = 1 + dataTemp[targetUnix].iloc[-1]
+
+                    # If end to end trading:
+                    if self.endToEnd:
+                        
+                        # Find Start unix
+                        startUnix = dayListUnix[0]
+
+                        # Get starting profit
+                        startProfit = 1 + dataTemp[startUnix].iloc[-1]
+
+                        # Assign new profit based off of starting profit
+                        profit = (profit-startProfit) / startProfit + 1
+                        
                     self.profitDict[sub][key] = profit
 
                 except:
@@ -222,12 +237,12 @@ class pipeline:
         for sub in self.subList:
 
             # Convert indices to str to match keys to raw postData df
-            saps.data[sub]['raw']['postData'].index = saps.data[sub]['raw']['postData'].index.astype(str)
+            self.data[sub]['raw']['postData'].index = saps.data[sub]['raw']['postData'].index.astype(str)
 
             # Make new df keeping only posts with profits
-            saps.data[sub]['raw']['postData'] = saps.data[sub]['raw']['postData'].loc[list(saps.profitDict[sub].keys())]
+            self.data[sub]['raw']['postData'] = saps.data[sub]['raw']['postData'].loc[list(saps.profitDict[sub].keys())]
 
-
+            
     # Adding profits to dataframe for easier manipulation
     def appendProfitsToDf(self):
 
@@ -240,6 +255,8 @@ class pipeline:
             # Create a new column with profit data
             saps.data[sub]['raw']['postData']['profit'] = list(saps.profitDict[sub].values())
 
+
+    # Function to clear bad profits (nans and infs) 
     def clearBadProfits(self):
         infs = {}
         nans = {}
@@ -249,14 +266,21 @@ class pipeline:
             infBool = saps.data[sub]['raw']['postData']['profit'] > 10000
             toDrop = list(infBool)
             saps.data[sub]['raw']['postData']['profit'][toDrop] = 1
-            infs[sub] = len(toDrop)
+            infs[sub] = sum(toDrop)
             
             nanBool = np.isnan(saps.data[sub]['raw']['postData']['profit'])
             toDrop = list(nanBool)
             saps.data[sub]['raw']['postData']['profit'][toDrop] = 1
-            nans[sub] = len(toDrop)
+            nans[sub] = sum(toDrop)
 
+            # SHOULDNT GO HERE 
+            # Just testing naive elimination
+            # strLen = 50
+            # self.data[sub]['raw']['postData'] = self.data[sub]['raw']['postData'].iloc[np.where(saps.data[sub]['raw']['postData']['text'].apply(lambda x: len(x) > strLen))[0]]
+  
         return infs,nans
+
+
         
     """
     3.0-1
@@ -281,6 +305,7 @@ class pipeline:
                 dfTemp['title'][rowNum] = dfTemp['title'][rowNum].replace(dfTemp.ticker[rowNum],"")
             
 
+
     """
     5.0
     Simulating Profits (retrospective)
@@ -291,30 +316,41 @@ class pipeline:
         df = self.data[sub]['raw']['postData']
 
         # Starting money and keys
-        bank = 10000
-        portfolio = 10000
+        reserve = 1000
+        reserveInitial = reserve
+        bank = 0
+        portfolio = 0
         tradeLog = {}
         holdingKeys = list()
 
         # Assigning Start Time
         # time1 = np.min(df.unix)-10
         # Start time at start of volatility 3/11/2020
-        time1 = df.unix[df.unix > 1583884800][-1] - 1
+        mbd = 1583884800
+        nye = 1577836800
+        nye19 = 1546300800
+        time1 = df.unix[df.unix > nye19][-1] - 1
         time2 = time1 + 3600
         
-        endTime = 1600500000
+        endTime = 1601000000
         print("started r/" + sub)
+        print(self.data[sub]['md']['postData']['startDate'])
         while time2 < endTime:
 
             # Getting range of keys between those times (reversed to start with first buy
             keysInRange = list(df.unix[time1 < df.unix][time2 > df.unix].index)[::-1]
-
             # Adding those to holdingKeys
             holdingKeys = holdingKeys + keysInRange
             
             # Subtracting from bank ($1 EACH)
-            investmentAmount = portfolio/10000
-            bank = bank - investmentAmount * len(keysInRange)
+            investmentAmount = 1
+            if bank >= investmentAmount * len(keysInRange):
+                bank = bank - investmentAmount * len(keysInRange)
+
+            else:
+                reserve = reserve - (investmentAmount * len(keysInRange) - bank)
+                bank = 0
+
              
             for key in keysInRange:
                 tradeLog[key] = {}
@@ -335,16 +371,16 @@ class pipeline:
                 if not len(holdingKeys):
 
                     # Record how much we spend and out return on investments
-                    totalSpent = 0
-                    totalMade = 0
-                    for trade in tradeLog:
-                        totalSpent = totalSpent + tradeLog[trade]['boughtFor']
-                        totalMade = totalMade + tradeLog[trade]['soldFor']
+                    #totalSpent = 0
+                    #totalMade = 0
+                    #for trade in tradeLog:
+                     #   totalSpent = totalSpent + tradeLog[trade]['boughtFor']
+                      #  totalMade = totalMade + tradeLog[trade]['soldFor']
 
                     # Display to user
-                    print("Total Amount Invested: " + str(totalSpent))
-                    print("Total Return: " + str(totalMade))
-                    print("Percent Return: " + str(100*(totalMade/totalSpent - 1)))
+                    print("Total Amount Invested: " + str(reserveInitial - reserve))
+                    print("Total Return: " + str(bank))
+                    print("Percent Return: " + str(100*(bank/(reserveInitial-reserve) - 1)))
 
                     # Set time to end to exit loop
                     time2 = endTime
@@ -370,10 +406,24 @@ class pipeline:
 
                     # Update our bank and total portfolio amount
                     bank = bank + tradeLog[keyToCheck]['soldFor']
-                    portfolio = portfolio - tradeLog[keyToCheck]['boughtFor'] + tradeLog[keyToCheck]['soldFor']
+                    
+                   # portfolio = portfolio - tradeLog[keyToCheck]['boughtFor'] + tradeLog[keyToCheck]['soldFor']
 
                     # Update user of running bank amount
                     if verbose:
+                        """
+                        MATT: right now this is printing overall portfolio value
+                        This is assuming we start with $10000 in cash, and reinvest
+                        1/10000 of our portfolio back in. For the first few trades
+                        this is $1, but when we start getting returns after 30 days
+                        (or however many ur running it for) that changes. The 10000
+                        is just arbitrary, not all of that gets invested and definitely
+                        not all at once.
+
+                        You can also change this print value to see how money in the
+                        bank changes over time. Just change print(portfolio) to
+                        print(bank)
+                        """
                         print(bank)
 
                     # Get rid of that key (stop holding it)
@@ -390,6 +440,12 @@ class pipeline:
             time1 = time2
             time2 = time2 + 3600
 
+        """
+        6.0
+        Visualizing
+        """
+
+
 """
 ------
 ACTION
@@ -398,19 +454,20 @@ ACTION
 
 # Input local data path
 pathToJson = "/home/justinmiller/devel/SAPS-public/Data/saps.json"
-
+# pathToJson = "/home/justinmiller/Documents/OfflineDatasets/saps.json"
 # Initialize pipeline with json formatted data
-saps = pipeline(pathToJson)
+saps = pipeline(pathToJson, endToEnd = True)
 
 # Initialize profit dicts and metadata
 saps.initProfitDicts()
 
 # Get profits for a certain length hold
-saps.holdForTime(30)
+saps.holdForTime(80)
 
 # Cut missed rows from dataframe and append profits
 saps.cutMissedProfits()
 saps.appendProfitsToDf()
+
 
 # Clearing bad profits (nans, infs, etc)
 infs, nans =  saps.clearBadProfits()
@@ -418,7 +475,15 @@ infs, nans =  saps.clearBadProfits()
 # Get tradeLogs for simulated trades
 log = {}
 
+"""
+# Printing means
+for sub in saps.subList:
+	print(sub)
+	print(np.nanmean(list(saps.profitDict[sub].values())))
+"""
+	
 # For each log
+saps.subList = ["Investing","Stocks"]
 for sub in saps.subList:
     
     # Simulate profits
@@ -427,5 +492,28 @@ for sub in saps.subList:
     # Save tradeLog in master dict
     log[sub] = tradeLog
 
+# TO visualize performance over time (outside of class)
+def visualizePerf(subList,log):
+    # Datetime formatting
+    import datetime as dt
 
+    # For each sublist 
+    for sub in subList:
+        date = np.array([])
+        ps = np.array([])
+
+        # For each key append parallel lists with date and profits
+        for key in list(log[sub].keys()):
+            ps = np.append(ps, log[sub][key]['profit'])
+            date = np.append(date, dt.datetime.fromtimestamp(log[sub][key]['timeOfPurchase']))
+
+        # Format plot to plot for datetimes
+        ax = plt.gca()
+        xfmt = md.DateFormatter('%m-%d')
+        ax.xaxis.set_major_formatter(xfmt)
+
+        # Plot cumulative (y value is a proxy for profit)
+        plt.plot(date,np.cumsum(ps-1))
+        plt.title(sub)
+        plt.show()
 

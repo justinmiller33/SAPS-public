@@ -453,7 +453,7 @@ ACTION
 """
 
 # Input local data path
-pathToJson = "/home/justinmiller/devel/SAPS-public/Data/saps.json"
+pathToJson = "/home/justinmiller/Documents/OfflineDatasets/saps2.json"
 # pathToJson = "/home/justinmiller/Documents/OfflineDatasets/saps.json"
 # Initialize pipeline with json formatted data
 saps = pipeline(pathToJson, endToEnd = True)
@@ -462,7 +462,7 @@ saps = pipeline(pathToJson, endToEnd = True)
 saps.initProfitDicts()
 
 # Get profits for a certain length hold
-saps.holdForTime(80)
+saps.holdForTime(30)
 
 # Cut missed rows from dataframe and append profits
 saps.cutMissedProfits()

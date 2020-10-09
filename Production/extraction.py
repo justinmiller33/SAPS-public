@@ -85,7 +85,7 @@ class Saps:
         return results.json()["data"]
 
     # Function to loop through multiple pushshift pages to crawl subreddit
-    def crawlSubreddit(subreddit, maxSubmissions):
+    def crawlSubreddit(subreddit, maxSubmissions,killCond):
 
         # Initialize new submissions as empty list
         submissions = []
@@ -103,6 +103,24 @@ class Saps:
             time.sleep(3)
             print("Minimum Progress: "+ str(100* len(submissions[:maxSubmissions])/maxSubmissions) + "%")
 
+        # Running list of results
+        ls = submissions[:maxSubmissions]
+
+        # If the last result violates the killCond
+        if ls[-1]['created_utc]'] < killCond:
+
+            # Getting the start point for our backtrack to find the killCond
+            lenToLoop = len(ls) - 2
+        
+            # Work backwards from the list until the last adherent result is found
+            while ls[lenToLoop]['created_utc]'] < killCond:
+
+                # Iterate one up the list
+                lenToLoop = lenToLoop - 1
+
+        # Trimming values after killCond off of ls
+        ls = ls[:lenToLoop]
+            
         return submissions[:maxSubmissions]
 
     # Extracting all tickers in title of post
@@ -169,8 +187,12 @@ class Saps:
         # Starting timer
         start = time.time()
 
+        # Setting a unix time as a killCond
+        killCond = getKillCond(testName)
+        
         # Getting data from subreddit
-        ls = Saps.crawlSubreddit(channel,num)
+        ls = Saps.crawlSubreddit(channel,num,killCond)
+        
         # Time taken to complete reddit scrape
         print(time.time()-start)
         
@@ -370,8 +392,65 @@ class Saps:
         
         return fDataIntra, fDataInter
 
+    # Check to kill processes once a certain datapoint is reached
+    # NOTE: Will only be used in 'update' mode
+    def getKillCond(testName):
+
+        # WARNING: CURRENTLY USES LOCAL PATH TO DATA AS IT CAN NOT BE HELD ON GITHUB
+        # Not currently a problem as project is being run on a single server
+        pathToJson = "/home/justinmiller/Documents/OfflineDatasets/sapsRecent.json"
+        
+        # Getting recent data
+        # ERROR CHECK... want to fail here if data not found
+        recentData = Saps.loadJson(pathToJson)
+
+        # Try Except CHECK... shouldn't fail here if there isn't this dictpath
+        # Just return 0 for the killCond unix
+        try:
+            # String in yyyy-mm-dd hh-mm-ss
+            endDate = recentData[testName]['md']['postData']['endDate']
+
+            # Converting to datetime
+            endDate = dt.strptime(endDate, '%Y-%m-%d %H:%M:%S')
+
+            # Getting killCond as unix
+            killCond = int(endDate.timestamp())
+
+        # Unix of killCond would mean we'd get data back until 01/01/1970
+        except:
+            killCond = 0
+
+        return killCond
+        
+    # Default function to open master json file
+    def loadJson(pathToJson):
+
+        # Load data as pandas df
+        data = pd.read_json(pathToJson)
+
+        # Convert back to original dict
+        data = data.to_dict()
+
+        # Loop through each subreddit
+        for subreddit in data.keys():
+
+            # Convert post data into labeled dataframe
+            data[subreddit]['raw']['postData'] = pd.DataFrame(data[subreddit]['raw']['postData'], columns = ["ticker","title","text","flair","unix"])
+
+            # For each financial data type
+            for finType in ["inter","intra"]:
+
+                # Get the data and transform it into a pandas time series
+                for key in list(data[subreddit]['raw'][finType].keys()):
+
+                    newData = np.array(data[subreddit]['raw'][finType][key])
+                    newData = pd.Series(data = newData[:,1], index = newData[:,0])
+                    data[subreddit]['raw'][finType][key] = newData
+
+        return data
+        
     # Main loop to extract post and financial data
-    def main(num, channel, name):
+    def runExtract(num, channel, name):
 
         # Extract and save post data df
         df = Saps.extractPosts(num, channel, name)
@@ -393,15 +472,16 @@ subList = ['investing']
 #nameList = ["Stocks","StockMarket","Daytrading","Robinhood","RobinHoodPennyStocks"]
 nameList = ['Investing']
 
+"""
 # For each subreddit
 for i in range(len(subList)):
 
-    df,fDataIntra, fDataInter = Saps.main(num, subList[i], nameList[i])
+    df,fDataIntra, fDataInter = Saps.runExtract(num, subList[i], nameList[i])
     
     print("------------------------------------")
     print(str(len(fDataIntra)) + " + " + str(len(fDataInter)) + " posts scraped for r/" + subList[i]) 
     print("------------------------------------")
     print(i)
-
+"""
     
 

@@ -296,6 +296,7 @@ class Saps:
 
     # Function to load pickle files
     def readPickle(pathToFile):
+        
         file = open(pathToFile, "rb")
         fData = pickle.load(file)
         file.close()

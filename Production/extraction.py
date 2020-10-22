@@ -1,5 +1,7 @@
-# SAPS Data Extraction Software
-# Justin Miller
+# Sentiment Analysis of Public Stockholders (SAPS) Data Extraction Software #
+# ------------------------------------------------------------------------- #
+# Justin Miller: College of Engineering, Northeastern University.
+# In affiliation with Matthew Katz: Carroll School of Management, Boston College.
 
 # Modules
 import time
@@ -17,8 +19,20 @@ class Saps:
     
     """
     Class to facilitate the extraction, matching, and organizing
-    of stock reccomendations from various social media channels
+    of stock reccomendations from various social media channels.
+    Repeated on monthly intervals using crontab to update main
+    dataset. (TODO) Link with jsonHandler.py and Kaggle API to
+    implement a fully automated publising pipeline. 
 
+    Properties:
+        
+    Saps.recentData:
+        Actively declared dict of most recent json data
+        Used when updating dataset
+
+    (TODO)
+    Saps.pathConfig:
+        Dict of paths to facilitate use on external systems
 
     Methods:
 
@@ -48,7 +62,7 @@ class Saps:
     
     Input Options:
     Reddit - Subreddits
-    Twitter - Users, Hashtags (TODO)
+    
 
     """
     # Function to crawl 1 page of the reddit api
@@ -103,25 +117,27 @@ class Saps:
             time.sleep(3)
             print("Minimum Progress: "+ str(100* len(submissions[:maxSubmissions])/maxSubmissions) + "%")
 
-        # Running list of results
-        ls = submissions[:maxSubmissions]
-
-        # If the last result violates the killCond
-        if ls[-1]['created_utc]'] < killCond:
-
-            # Getting the start point for our backtrack to find the killCond
-            lenToLoop = len(ls) - 2
+            # Running list of results
+            ls = submissions[:maxSubmissions]
         
-            # Work backwards from the list until the last adherent result is found
-            while ls[lenToLoop]['created_utc]'] < killCond:
+            # If the last result violates the killCond
+            if ls[-1]['created_utc'] < killCond:
 
-                # Iterate one up the list
-                lenToLoop = lenToLoop - 1
-
-        # Trimming values after killCond off of ls
-        ls = ls[:lenToLoop]
+                # Getting the start point for our backtrack to find the killCond
+                lenToLoop = len(ls) - 2
             
-        return submissions[:maxSubmissions]
+                # Work backwards from the list until the last adherent result is found
+                while ls[lenToLoop]['created_utc'] < killCond:
+
+                    # Iterate one up the list
+                    lenToLoop = lenToLoop - 1
+
+                # Trimming values after killCond off of ls
+                ls = ls[:lenToLoop]
+
+                lastPage = []
+        
+        return ls
 
     # Extracting all tickers in title of post
     # Identifying series' of three or four capital letters as potential tickers
@@ -277,7 +293,15 @@ class Saps:
         df = pd.DataFrame(df, columns = ['ticker','title','text','type','datetime'])
 
         return df
-    
+
+    # Function to load pickle files
+    def readPickle(pathToFile):
+        file = open(pathToFile, "rb")
+        fData = pickle.load(file)
+        file.close()
+
+        return fData
+
     # Function to get intraday financial data for one post
     def getIntraday(rowNum,df):
         
@@ -398,11 +422,10 @@ class Saps:
 
         # WARNING: CURRENTLY USES LOCAL PATH TO DATA AS IT CAN NOT BE HELD ON GITHUB
         # Not currently a problem as project is being run on a single server
-        pathToJson = "/home/justinmiller/Documents/OfflineDatasets/sapsRecent.json"
-        
+        pathToJson = "/home/justinmiller/Documents/OfflineDatasets/sapsRecent.json
         # Getting recent data
         # ERROR CHECK... want to fail here if data not found
-        recentData = Saps.loadJson(pathToJson)
+        Saps.recentData = Saps.loadJson(pathToJson)
 
         # Try Except CHECK... shouldn't fail here if there isn't this dictpath
         # Just return 0 for the killCond unix
@@ -471,6 +494,7 @@ subList = ['investing']
 # Naming list for each output
 #nameList = ["Stocks","StockMarket","Daytrading","Robinhood","RobinHoodPennyStocks"]
 nameList = ['Investing']
+
 
 """
 # For each subreddit

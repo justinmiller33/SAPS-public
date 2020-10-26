@@ -204,8 +204,8 @@ class Saps:
         start = time.time()
 
         # Setting a unix time as a killCond
-        killCond = getKillCond(testName)
-        
+        killCond = Saps.getKillCond(testName)
+
         # Getting data from subreddit
         ls = Saps.crawlSubreddit(channel,num,killCond)
         
@@ -423,7 +423,7 @@ class Saps:
 
         # WARNING: CURRENTLY USES LOCAL PATH TO DATA AS IT CAN NOT BE HELD ON GITHUB
         # Not currently a problem as project is being run on a single server
-        pathToJson = "/home/justinmiller/Documents/OfflineDatasets/sapsRecent.json
+        pathToJson = "/home/justinmiller/Documents/OfflineDatasets/sapsRecent.json"
         # Getting recent data
         # ERROR CHECK... want to fail here if data not found
         Saps.recentData = Saps.loadJson(pathToJson)
@@ -432,7 +432,7 @@ class Saps:
         # Just return 0 for the killCond unix
         try:
             # String in yyyy-mm-dd hh-mm-ss
-            endDate = recentData[testName]['md']['postData']['endDate']
+            endDate = Saps.recentData[testName]['md']['postData']['endDate']
 
             # Converting to datetime
             endDate = dt.strptime(endDate, '%Y-%m-%d %H:%M:%S')
@@ -443,6 +443,7 @@ class Saps:
         # Unix of killCond would mean we'd get data back until 01/01/1970
         except:
             killCond = 0
+            input("It seems like this is a new channel. Press enter to continue: ")
 
         return killCond
         
@@ -497,6 +498,7 @@ subList = ['investing']
 nameList = ['Investing']
 
 
+df,fDataIntra,fDataInter = Saps.runExtract(num, subList[0], nameList[0])
 """
 # For each subreddit
 for i in range(len(subList)):

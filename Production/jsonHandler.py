@@ -29,6 +29,33 @@ def readPickle(pathToFile):
 
     return fData
 
+# Function to load existing json
+def loadJson(pathToJson):
+
+        # Load data as pandas df
+        data = pd.read_json(pathToJson)
+
+        # Convert back to original dict
+        data = data.to_dict()
+
+        # Loop through each subreddit
+        for subreddit in data.keys():
+
+            # Convert post data into labeled dataframe
+            data[subreddit]['raw']['postData'] = pd.DataFrame(data[subreddit]['raw']['postData'], columns = ["ticker","title","text","flair","unix"])
+
+            # For each financial data type
+            for finType in ["inter","intra"]:
+
+                # Get the data and transform it into a pandas time series
+                for key in list(data[subreddit]['raw'][finType].keys()):
+
+                    newData = np.array(data[subreddit]['raw'][finType][key])
+                    newData = pd.Series(data = newData[:,1], index = newData[:,0])
+                    data[subreddit]['raw'][finType][key] = newData
+
+        return data
+
 # Convert a list of times to unix
 def timeToUnix(timeList):
     toUnix = lambda x : int(x.timestamp())
@@ -64,8 +91,8 @@ def writeDfMd(jsonDict, dfName, df):
     # Including subreddit, number of posts, and start+end date of scrape
     jsonDict[dfName]['md']['postData']['subreddit'] = "r/" + dfName
     jsonDict[dfName]['md']['postData']['posts'] = len(df)
-    jsonDict[dfName]['md']['postData']['startDate'] = dt.fromtimestamp(df[-1,-1]).strftime('%Y-%m-%d %H:%M:%S')
-    jsonDict[dfName]['md']['postData']['endDate'] = dt.fromtimestamp(df[0,-1]).strftime('%Y-%m-%d %H:%M:%S')
+    jsonDict[dfName]['md']['postData']['startDate'] = dt.fromtimestamp(int(df[-1,-1])).strftime('%Y-%m-%d %H:%M:%S')
+    jsonDict[dfName]['md']['postData']['endDate'] = dt.fromtimestamp(int(df[0,-1])).strftime('%Y-%m-%d %H:%M:%S')
 
     return jsonDict
 
@@ -80,7 +107,12 @@ def writeFDataMd(jsonDict, dfName, finType, fData):
     
 """ ACTION """
 
-# Initializing dict that will turn into json file
+# Loading recent json data
+pathToJson = "/home/justinmiller/Documents/OfflineDatasets/sapsRecent.json"
+recentData = loadJson(pathToJson)
+
+
+# Initializing dict as old data that will turn into json file
 jsonDict = {}
 
 # Getting all files in data directory
@@ -101,9 +133,17 @@ for npy in npyList:
     dfName = npy[2:-4]
     df = loadDf(dataDir + npy)
 
-    # Reverting df to numpy (Redundant... but gaurentees consistency)
+    # Reverting df to numpy (Redundant... but guarentees consistency)
     df = df.to_numpy()
-    
+
+    # Checking to see if this data is the same as the old json
+    # If height doesn't line up... its not the same df
+    try:
+        sameDf = (np.array(df) == np.array(recentData[dfName]['raw']['postData']))[:,0:4].all()
+    except:
+        sameDf = False
+        
+    print(sameDf)
     # Initializing empty dict for that channel
     jsonDict[dfName] = {}
 
@@ -124,36 +164,69 @@ for npy in npyList:
     timeList = timeToUnix(timeList)
     df[:,-1] = timeList
     
-    # Write df to raw
-    jsonDict[dfName]['raw']['postData'] = df.tolist()
+    # If df is the same as the old data
+    if sameDf:
 
-    # Write df metadata
-    jsonDict = writeDfMd(jsonDict, dfName, df)
+        # Swap in recent data, md and raw will stay the same
+        jsonDict[dfName] = recentData[dfName]
+        print(dfName + " stayed the same")
+        continue
+
+    # If not
+    else:
+        # Old data df list and new df list
+        recentList = np.array(recentData[dfName]['raw']['postData']).tolist()
+        dfList = df.tolist()
+
+        # Full list of df
+        dfList.extend(recentList)
+
+        # Adding to dict
+        jsonDict[dfName]['raw']['postData'] = dfList
+
+        # Switching back to numpy array
+        df = np.array(dfList)
+        
+        # Write df metadata
+        jsonDict = writeDfMd(jsonDict, dfName, df)
+        print(dfName + " changed")
+        
 
     
 # Looping through each finacial data file
 for pkl in pklList:
 
+    
     # Extracting name and data
     dfName = pkl[10:-4]
     
     # Finding its type (inter, intra)
     finType = pkl[5:10].lower()
 
-    # Reading data
-    fData = readPickle(dataDir + pkl)
+  
+    if sameDf:
 
-    # Deserialize fData
-    fData = deserialize(fData)
+        jsonDict[dfName]['raw'][finType] = recentData[dfName]['raw'][finType]
+        print(dfName + " fin stayed the same")
+        
+    else:
+        # Reading data
+        fData = readPickle(dataDir + pkl)
 
-    # Write the raw data
-    jsonDict[dfName]['raw'][finType] = fData
+        # Deserialize fData
+        fData = deserialize(fData)
 
-    # Write financial metadata
-    jsonDict = writeFDataMd(jsonDict, dfName, finType, fData) 
+        # Write the raw data
+        jsonDict[dfName]['raw'][finType] = fData
 
+        # Write financial metadata
+        jsonDict = writeFDataMd(jsonDict, dfName, finType, fData) 
+        print(dfName + " fin changed")
+        
 print("Finished Creating Dict, writing to json... ")
 
 # Writing to json file
-with open(dataDir + 'saps.json', 'w') as file:
+"""
+with open(dataDir + 'sapsAuto.json', 'w') as file:
     json.dump(jsonDict, file)
+    """
